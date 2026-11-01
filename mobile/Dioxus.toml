@@ -1,0 +1,16 @@
+[application]
+name = "Suki Davao"
+default_platform = "android"
+android_min_sdk_version = 28
+
+[bundle]
+identifier = "ph.sukidavao.mobile"
+publisher = "Suki Davao"
+
+[android]
+min_sdk = 28
+target_sdk = 35
+compile_sdk = 35
+
+[android.application]
+uses_cleartext_traffic = false

@@ -4,3 +4,5 @@ node_modules/
 *.tsbuildinfo
 backend/target/
 !backend/.env.example
+/target/
+/mobile/.gradle/

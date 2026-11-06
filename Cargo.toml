@@ -1,4 +1,4 @@
 [workspace]
-members = ["mobile", "foundation-api"]
+members = ["landing", "mobile", "foundation-api"]
 exclude = ["backend"]
 resolver = "2"

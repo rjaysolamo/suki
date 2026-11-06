@@ -1,28 +1,18 @@
 {
-  "name": "suki",
+  "name": "suki-platform",
   "version": "0.1.0",
   "private": true,
+  "description": "Suki Davao — 100% Pure Rust Market Platform (Landing, Mobile, Backend, Foundation API)",
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
-    "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
-  },
-  "dependencies": {
-    "lucide-react": "^0.468.0",
-    "next": "^15.5.12",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "^5.9.0"
-  },
-  "type": "module",
-  "overrides": {
-    "postcss": "^8.5.30"
+    "dev": "cargo run -p suki-landing",
+    "landing": "cargo run -p suki-landing",
+    "landing:build": "cargo build -p suki-landing --release",
+    "mobile": "./scripts/run-android.sh",
+    "mobile:run": "./scripts/run-android.sh",
+    "mobile:build": "cd mobile && dx build --platform android",
+    "backend": "cargo run --manifest-path backend/Cargo.toml",
+    "foundation": "cargo run -p suki-foundation-api",
+    "check": "cargo check --workspace && cargo check --manifest-path backend/Cargo.toml",
+    "check:mobile": "cd mobile && cargo check --target x86_64-linux-android"
   }
 }

@@ -1,6 +1,7 @@
 //! Platform calls stay outside UI and business logic.
 //! This feasibility probe reads a non-sensitive Android system value through JNI.
 #[cfg(target_os = "android")]
+#[allow(dead_code)]
 pub fn runtime_info() -> Result<String, String> {
     let context = ndk_context::android_context();
     // ndk-context owns this VM for the Android activity lifetime; we never destroy it.
@@ -17,6 +18,7 @@ pub fn runtime_info() -> Result<String, String> {
 }
 
 #[cfg(not(target_os = "android"))]
+#[allow(dead_code)]
 pub fn runtime_info() -> Result<String, String> {
     Err("This check requires the installed Android application.".to_string())
 }

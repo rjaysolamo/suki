@@ -135,13 +135,39 @@ async fn safety(
     req: axum::extract::Request,
     next: Next,
 ) -> Response {
-    if !matches!(*req.method(), Method::GET | Method::HEAD | Method::OPTIONS) {
+    let origin_str = headers.get("origin").and_then(|v| v.to_str().ok());
+    let is_allowed_origin = origin_str.map_or(true, |o| {
+        o == s.origin
+            || o == "https://localhost"
+            || o == "http://localhost"
+            || o.starts_with("http://10.0.2.2:")
+            || o.starts_with("http://localhost:")
+    });
+
+    if req.method() == Method::OPTIONS {
+        if !is_allowed_origin {
+            return ApiError::forbidden().into_response();
+        }
+        let mut res = Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .body(axum::body::Body::empty())
+            .unwrap();
+        if let Some(o) = origin_str {
+            if let Ok(val) = o.parse() {
+                res.headers_mut().insert("access-control-allow-origin", val);
+                res.headers_mut().insert("access-control-allow-credentials", "true".parse().unwrap());
+                res.headers_mut().insert("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS".parse().unwrap());
+                res.headers_mut().insert("access-control-allow-headers", "Content-Type, X-Suki-Request, Authorization".parse().unwrap());
+            }
+        }
+        return res;
+    }
+
+    if !matches!(*req.method(), Method::GET | Method::HEAD) {
         if headers.get("x-suki-request").and_then(|v| v.to_str().ok()) != Some("1") {
             return ApiError::forbidden().into_response();
         }
-        if let Some(origin) = headers.get("origin")
-            && origin.to_str().ok() != Some(&s.origin)
-        {
+        if !is_allowed_origin {
             return ApiError::forbidden().into_response();
         }
     }
@@ -152,6 +178,14 @@ async fn safety(
     response
         .headers_mut()
         .insert("x-content-type-options", "nosniff".parse().unwrap());
+    if let Some(o) = origin_str {
+        if is_allowed_origin {
+            if let Ok(val) = o.parse() {
+                response.headers_mut().insert("access-control-allow-origin", val);
+                response.headers_mut().insert("access-control-allow-credentials", "true".parse().unwrap());
+            }
+        }
+    }
     response
 }
 pub fn router(s: App) -> Router {

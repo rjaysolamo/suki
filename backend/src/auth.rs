@@ -35,6 +35,11 @@ impl FromRequestParts<App> for User {
     }
 }
 pub fn session_token(h: &HeaderMap) -> Option<String> {
+    if let Some(auth) = h.get("authorization").and_then(|v| v.to_str().ok()) {
+        if let Some(token) = auth.strip_prefix("Bearer ") {
+            return Some(token.trim().to_string());
+        }
+    }
     h.get("cookie")?
         .to_str()
         .ok()?
@@ -205,7 +210,7 @@ pub async fn login(State(s): State<App>, Json(input): Json<Login>) -> Result<imp
         "suki_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800{}",
         if s.secure_cookies { "; Secure" } else { "" }
     );
-    Ok(([(SET_COOKIE, cookie)], Json(json!({"ok":true}))))
+    Ok(([(SET_COOKIE, cookie)], Json(json!({"ok":true, "token": token}))))
 }
 pub async fn logout(State(s): State<App>, headers: HeaderMap) -> Result<impl IntoResponse> {
     if let Some(t) = session_token(&headers) {

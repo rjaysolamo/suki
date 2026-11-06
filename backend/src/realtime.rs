@@ -148,7 +148,15 @@ pub async fn websocket(
     Path(oid): Path<String>,
     ws: WebSocketUpgrade,
 ) -> Result<Response> {
-    if headers.get("origin").and_then(|v| v.to_str().ok()) != Some(&s.origin) {
+    let origin_str = headers.get("origin").and_then(|v| v.to_str().ok());
+    let is_allowed_origin = origin_str.map_or(false, |o| {
+        o == s.origin
+            || o == "https://localhost"
+            || o == "http://localhost"
+            || o.starts_with("http://10.0.2.2:")
+            || o.starts_with("http://localhost:")
+    });
+    if !is_allowed_origin {
         return Err(ApiError::forbidden());
     }
     chat_access(&s, &u, &oid).await?;

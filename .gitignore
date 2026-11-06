@@ -1,8 +1,34 @@
+# Dependencies & Build artifacts
 node_modules/
 .next/
-.env*
+out/
+dist/
 *.tsbuildinfo
-backend/target/
+
+# Environment
+.env*
 !backend/.env.example
-/target/
-/mobile/.gradle/
+
+# Rust targets & artifacts
+target/
+backend/target/
+mobile/target/
+foundation-api/target/
+.dioxus/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# Archive
+.archive/
+
+
+# Agent skills & tooling
+.agents/
+.taste-skill/
+skills-lock.json
+

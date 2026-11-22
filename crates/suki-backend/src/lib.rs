@@ -269,9 +269,22 @@ pub fn router(s: App) -> Router {
         .route("/api/orders/{id}/reviews", get(reviews::list))
         .route("/api/orders/{id}/reviews/{kind}", post(reviews::submit))
         .route("/api/reputation/{kind}/{id}", get(reviews::reputation))
+        // The app restores the authorized admin directly to their dashboard at /.
+        .merge({
+            let entry = get(|| async { axum::response::Redirect::to("/") });
+            Router::new()
+                .route("/admin", entry.clone())
+                .route("/admin/", entry.clone())
+                .route("/admin/{*path}", entry)
+                .layer(middleware::from_fn_with_state(
+                    s.clone(),
+                    auth::require_admin_auth,
+                ))
+        })
         .nest(
             "/api/admin",
             Router::new()
+                .route("/pending-approvals", get(admin::pending_approvals))
                 .route("/users", get(admin::users))
                 .route("/users/{id}", patch(admin::update_user))
                 .route("/users/{id}/approve", post(admin::approve))

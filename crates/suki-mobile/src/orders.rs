@@ -277,13 +277,13 @@ pub fn OrderScreen(id: String) -> Element {
                 div { class: "line", h2 { "Delivery timeline" } small { "{connection}" } }
                 ol { class: "timeline",
                     for (index, (status, _, timestamp)) in data.history.iter().enumerate() {
-                        li { key: "{index}", strong { "{label(status)}" } " · {date(*timestamp)}" }
+                        li { key: "{index}", strong { "{label(status)}" } " · {davao_date(*timestamp)}" }
                     }
                 }
                 if data.order.status == "out_for_delivery" {
                     if let Some(position) = position {
                         p { "Courier location: {position.lat:.5}, {position.lng:.5}" }
-                        p { class: "muted", "Reported {date(position.reported_at)}"
+                        p { class: "muted", "Reported {davao_date(position.reported_at)}"
                             if now() - position.reported_at > 15 { " · Last report is stale" }
                         }
                     } else {
@@ -407,7 +407,7 @@ pub(crate) fn Chat(path: String, messages: Signal<Vec<ChatMessage>>) -> Element 
                 if messages.read().is_empty() { p { "No messages yet." } }
                 for message in messages.read().iter() {
                     article { key: "{message.id}",
-                        strong { "{message.sender_name} · " if message.sender_role == "courier" { "rider" } else { "{message.sender_role}" } } small { "{date(message.created_at)}" }
+                        strong { "{message.sender_name} · " if message.sender_role == "courier" { "rider" } else { "{message.sender_role}" } } small { "{davao_date(message.created_at)}" }
                         p { "{message.content}" }
                         if message.is_legacy() { small { "Historical message · no integrity hash" } }
                     }
@@ -449,7 +449,7 @@ fn CheckoutReceipt(snapshot: OrderSnapshot, order_id: String, payment_status: St
                 p { role: "alert", "This receipt failed its integrity check." }
             } else {
                 strong { class: "badge", "Verified receipt" }
-                p { "{suki_shared::addresses::display_address_text(&receipt.address)} · {date(receipt.created_at)}" }
+                p { "{suki_shared::addresses::display_address_text(&receipt.address)} · {davao_date(receipt.created_at)}" }
                 for item in &receipt.items {
                     div { class: "line", key: "{item.item_id}",
                         span { "{item.name} · {item.vendor_name} · {quantity(item.quantity_milli)} {item.unit} × {peso(item.unit_price_centavos)}" }
@@ -743,14 +743,14 @@ fn quantity(milli: i64) -> String {
     }
 }
 
-fn date(timestamp: i64) -> String {
+pub(crate) fn davao_date(timestamp: i64) -> String {
     // Davao observes UTC+8 year-round.
     time::OffsetDateTime::from_unix_timestamp(timestamp)
         .map(|utc| {
             let local = utc.to_offset(time::macros::offset!(+8));
             local
                 .format(time::macros::format_description!(
-                    "[month repr:short] [day], [hour]:[minute]"
+                    "[month repr:short] [day], [year] · [hour]:[minute]"
                 ))
                 .unwrap_or_default()
         })

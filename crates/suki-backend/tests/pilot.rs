@@ -570,6 +570,35 @@ async fn full_order_and_authorization() {
         .0,
         403
     );
+    let queue = suki_api::router(Arc::new(AppState {
+        rate_limits: Default::default(),
+        ..(*s).clone()
+    }));
+    let pending_path = "/api/admin/pending-approvals";
+    let pending_rows = ok(&queue, "GET", pending_path, &admin, Value::Null).await;
+    let applicant = pending_rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == vendor_id)
+        .unwrap();
+    assert_eq!(applicant["email"], vendor_email);
+    assert_eq!(applicant["name"], "Synthetic Test User");
+    assert_eq!(applicant["phone"], "09000000000");
+    assert_eq!(applicant["role"], "vendor");
+    assert_eq!(applicant["stall_name"], "Test Fresh Picks");
+    assert!(applicant["created_at"].as_i64().unwrap() > 0);
+    assert!(
+        !pending_rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["id"] == customer_id)
+    );
+    assert_eq!(
+        call(&queue, "GET", "/admin", &admin, Value::Null).await.0,
+        303
+    );
     let approve_path = format!("/api/admin/users/{vendor_id}/approve");
     assert_eq!(
         call(&app, "POST", &approve_path, &customer, Value::Null)
@@ -593,6 +622,12 @@ async fn full_order_and_authorization() {
     let vendor = login(&app, &vendor_email).await;
     assert!(ok(&app, "GET", "/api/auth/me", &vendor, Value::Null).await["approved_at"].is_i64());
     let (rejected_id, rejected_email) = account(&app, "rider").await;
+    let pending_rows = ok(&queue, "GET", pending_path, &admin, Value::Null).await;
+    let rows = pending_rows.as_array().unwrap();
+    assert!(!rows.iter().any(|r| r["id"] == vendor_id));
+    let rider = rows.iter().find(|r| r["id"] == rejected_id).unwrap();
+    assert_eq!(rider["role"], "courier");
+    assert_eq!(rider["stall_name"], Value::Null);
     let (pending, msg, cookie) = call(
         &app,
         "POST",
@@ -638,6 +673,14 @@ async fn full_order_and_authorization() {
     .await;
     assert_eq!(status, 403);
     assert_eq!(msg["error"], "Account application was rejected.");
+    let pending_rows = ok(&queue, "GET", pending_path, &admin, Value::Null).await;
+    assert!(
+        !pending_rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["id"] == rejected_id)
+    );
     for _ in 0..8 {
         assert_eq!(
             call(&onboarding, "GET", "/api/admin/users", &admin, Value::Null)
@@ -752,6 +795,9 @@ async fn full_order_and_authorization() {
         ..(*s).clone()
     }));
     for path in [
+        "/admin",
+        "/admin/pending-approvals",
+        pending_path,
         "/api/admin/users",
         "/api/admin/reports",
         "/api/admin/audit",

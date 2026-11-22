@@ -113,3 +113,7 @@ nav svg{width:1.4rem;height:1.4rem;fill:none;stroke:currentColor;stroke-width:1.
 .profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .avatar-upload{margin:-.5rem 0 1rem;color:#713f51;font-size:.8rem}.avatar-upload input{font-size:.75rem}
 .live-map{height:300px;width:100%;border-radius:16px;overflow:hidden;background:#e7ede5;margin:.8rem 0}.map-legend{font-size:.82rem}.review-form{border-top:1px solid #eee3df;padding:1rem 0}.rating-stars,.review-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin:.5rem 0}.rating-stars .star{font-size:1.8rem;color:#c5b9b3;background:transparent;border:0;padding:.15rem}.rating-stars .selected{color:#dd8c38}.review-tags button[aria-pressed=true]{background:#dbeee5;color:#17694c}
+
+.applicant dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.45rem 1rem}
+.applicant dt{color:#705d64}.applicant dd{margin:0;overflow-wrap:anywhere}
+.applicant-actions{display:flex;flex-wrap:wrap;gap:.5rem}

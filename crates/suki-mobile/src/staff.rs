@@ -4,7 +4,7 @@ use reqwest::Method;
 use serde::Serialize;
 use suki_shared::{
     Acknowledged, StatusResult,
-    admin::{AuditEntry, Reports, UserUpdate},
+    admin::{AuditEntry, PendingApplicant, Reports, UserUpdate},
     auth::{Account, Role},
     crypto::{IntegrityReport, SnapshotVerification, gcash_reference_hash},
     orders::{Assignment, Item, OrderDetail, Purchase, Reconciliation, Status},
@@ -14,6 +14,118 @@ use suki_shared::{
 
 #[component]
 pub fn AdminDashboard() -> Element {
+    let mut approvals = use_signal(|| true);
+    rsx! {
+        div { class: "page-title", h1 { "Admin dashboard" } }
+        div { class: "order-tabs", role: "group", aria_label: "Admin dashboard sections",
+            button { aria_pressed: approvals(), onclick: move |_| approvals.set(true), "Pending Approvals" }
+            button { aria_pressed: !approvals(), onclick: move |_| approvals.set(false), "Operations" }
+        }
+        if approvals() { ApprovalQueue {} } else { AdminOperations {} }
+    }
+}
+
+#[component]
+fn ApprovalQueue() -> Element {
+    let api = use_context::<Api>();
+    let mut queue = use_resource(move || {
+        let api = api.clone();
+        async move {
+            api.get::<Vec<PendingApplicant>>("/admin/pending-approvals")
+                .await
+        }
+    });
+    let mut notice = use_signal(String::new);
+    rsx! {
+        section { aria_label: "Pending applications",
+            div { class: "line",
+                div { p { class: "eyebrow", "MARKET ONBOARDING" } h2 { "Applications to review" } }
+                button { onclick: move |_| queue.restart(), "Refresh list" }
+            }
+            p { role: "status", "{notice}" }
+            match &*queue.read() {
+                Some(Ok(rows)) => rsx! {
+                    if rows.is_empty() { div { class: "empty state-empty", h3 { "No pending applications" }
+                        p { "New vendor and rider registrations will appear here." }
+                    } } else {
+                        small { "{rows.len()} pending · Oldest first" }
+                        for applicant in rows {
+                            ApplicantCard { key: "{applicant.id}", applicant: applicant.clone(),
+                                ondecision: move |(id, feedback): (String, String)| {
+                                    if let Some(Ok(rows)) = queue.write().as_mut() {
+                                        rows.retain(|row| row.id != id);
+                                    }
+                                    notice.set(feedback);
+                                },
+                            }
+                        }
+                    }
+                },
+                Some(Err(e)) => rsx! { p { role: "alert", "{e}" } },
+                None => rsx! { p { role: "status", "Loading applications…" } },
+            }
+        }
+    }
+}
+
+#[component]
+fn ApplicantCard(
+    applicant: PendingApplicant,
+    ondecision: EventHandler<(String, String)>,
+) -> Element {
+    let api = use_context::<Api>();
+    let mut busy = use_signal(|| false);
+    let mut error = use_signal(String::new);
+    let id = applicant.id.clone();
+    let name = applicant.name.clone();
+    let mut decide = move |approve: bool| {
+        if busy() {
+            return;
+        }
+        busy.set(true);
+        error.set(String::new());
+        let (action, past) = if approve {
+            ("approve", "approved")
+        } else {
+            ("reject", "rejected")
+        };
+        let (api, id, name) = (api.clone(), id.clone(), name.clone());
+        spawn(async move {
+            let result = api
+                .send::<Acknowledged, _>(Method::POST, &format!("/admin/users/{id}/{action}"), &())
+                .await;
+            busy.set(false);
+            match result {
+                Ok(_) => ondecision.call((id, format!("{name}’s account was {past}."))),
+                Err(e) if e.status == Some(409) => {
+                    ondecision.call((id, format!("{name}’s application is no longer pending.")))
+                }
+                Err(e) => error.set(e.to_string()),
+            }
+        });
+    };
+    let mut reject = decide.clone();
+    rsx! {
+        article { class: "panel applicant",
+            p { class: "eyebrow", if applicant.role == "vendor" { "VENDOR" } else { "RIDER" } }
+            h3 { "{applicant.name}" }
+            dl {
+                dt { "Email" } dd { "{applicant.email}" }
+                dt { "Contact number" } dd { "{applicant.phone}" }
+                if let Some(stall) = &applicant.stall_name { dt { "Stall" } dd { "{stall}" } }
+                dt { "Registered" } dd { "{crate::orders::davao_date(applicant.created_at)} PHT" }
+            }
+            div { class: "applicant-actions",
+                button { class: "primary", disabled: busy(), onclick: move |_| decide(true), "Approve Account" }
+                button { disabled: busy(), onclick: move |_| reject(false), "Reject Account" }
+            }
+            if !error().is_empty() { p { role: "alert", "{error}" } }
+        }
+    }
+}
+
+#[component]
+fn AdminOperations() -> Element {
     let api = use_context::<Api>();
     let accounts_api = api.clone();
     let mut accounts = use_resource(move || {
@@ -32,11 +144,11 @@ pub fn AdminDashboard() -> Element {
         }
     });
     rsx! {
-        div { class: "line", h1 { "Admin dashboard" } button { onclick: move |_| { accounts.restart(); dashboard.restart(); }, "Refresh dashboard" } }
-        details { class: "panel", summary { "Account approvals and role management" }
+        div { class: "line", h2 { "Operations" } button { onclick: move |_| { accounts.restart(); dashboard.restart(); }, "Refresh dashboard" } }
+        details { class: "panel", summary { "Account and role management" }
             match &*accounts.read() {
                 Some(Ok(rows)) => rsx! {
-                    for account in rows {
+                    for account in rows.iter().filter(|a| a.status != "pending_approval") {
                         ManageUser { key: "{account.id}-{account.role}-{account.status}", account: account.clone(), onsaved: move |_| accounts.restart() }
                     }
                 },
@@ -149,26 +261,7 @@ fn ManageUser(account: Account, onsaved: EventHandler<()>) -> Element {
     let mut busy = use_signal(|| false);
     let mut message = use_signal(String::new);
     let self_user = state.account.read().as_ref().is_some_and(|u| u.id == id);
-    let pending = account.status == suki_shared::auth::AccountStatus::PendingApproval.as_str();
     let rejected = account.status == suki_shared::auth::AccountStatus::Rejected.as_str();
-    let decision_api = api.clone();
-    let decision_id = id.clone();
-    let mut decide = move |action: &'static str| {
-        if busy() {
-            return;
-        }
-        busy.set(true);
-        let api = decision_api.clone();
-        let path = format!("/admin/users/{decision_id}/{action}");
-        spawn(async move {
-            match api.send::<Acknowledged, _>(Method::POST, &path, &()).await {
-                Ok(_) => onsaved.call(()),
-                Err(e) => message.set(e.to_string()),
-            };
-            busy.set(false);
-        });
-    };
-    let mut reject = decide.clone();
     rsx! {
         form { class: "order-link", onsubmit: move |e| {
             e.prevent_default();
@@ -186,12 +279,7 @@ fn ManageUser(account: Account, onsaved: EventHandler<()>) -> Element {
             });
         },
             strong { "{account.name} · {account.email}" }
-            if pending {
-                p { "Pending approval · {account.role}" }
-                button { r#type: "button", disabled: busy(), onclick: move |_| decide("approve"), "Approve application" }
-                button { r#type: "button", disabled: busy(), onclick: move |_| reject("reject"), "Reject application" }
-                p { role: "status", "{message}" }
-            } else if rejected {
+            if rejected {
                 p { "Application rejected" }
             } else if !self_user {
                 label { "Role" select { value: "{role}", onchange: move |e| role.set(e.value()),

@@ -1,7 +1,9 @@
 use crate::auth::User;
 use crate::*;
 use axum::extract::{Path, State};
-pub use suki_shared::admin::{AuditEntry, Expense, OrderReport, Reports, Settings, UserUpdate};
+pub use suki_shared::admin::{
+    AuditEntry, Expense, OrderReport, PendingApplicant, Reports, Settings, UserUpdate,
+};
 use suki_shared::auth::AccountStatus;
 pub async fn load(db: &MySqlPool) -> Result<Settings> {
     Ok(sqlx::query_as("SELECT * FROM settings WHERE id=1")
@@ -45,6 +47,23 @@ pub async fn update_settings(
     tx.commit().await?;
     Ok(Json(Acknowledged { ok: true }))
 }
+pub async fn pending_approvals(
+    State(s): State<App>,
+    u: User,
+) -> Result<Json<Vec<PendingApplicant>>> {
+    u.require(&["admin"])?;
+    Ok(Json(
+        sqlx::query_as(
+            "SELECT u.id,u.name,u.email,u.phone,u.role,v.shop_name AS stall_name,u.created_at
+         FROM users u LEFT JOIN vendor_profiles v ON v.user_id=u.id AND u.role='vendor'
+         WHERE u.status='pending_approval' AND u.role IN ('vendor','courier')
+         ORDER BY u.created_at,u.id",
+        )
+        .fetch_all(&s.db)
+        .await?,
+    ))
+}
+
 pub async fn users(State(s): State<App>, u: User) -> Result<Json<Vec<crate::auth::Account>>> {
     u.require(&["admin"])?;
     Ok(Json(

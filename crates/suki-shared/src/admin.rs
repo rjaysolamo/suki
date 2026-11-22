@@ -60,3 +60,16 @@ pub struct AuditEntry {
     pub details: String,
     pub created_at: i64,
 }
+
+/// Registration details shown only to authorized onboarding administrators.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct PendingApplicant {
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub phone: String,
+    pub role: String,
+    pub stall_name: Option<String>,
+    pub created_at: i64,
+}

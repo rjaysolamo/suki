@@ -32,7 +32,13 @@ Set `SUKI_INTEGRITY_KEY` before starting or upgrading the API. Generate it once 
 
 Set `DATA_ENCRYPTION_KEY` to an independently generated 32-byte key (`openssl rand -hex 32`) before starting the API. Keep it in the server secret store and back it up separately from MariaDB. Every instance sharing a database needs the same key. Startup rejects a missing, malformed, or mismatched key. Replacing the key requires a planned re-encryption migration.
 
-Customers can sign in after registering. Vendor and rider applications start pending. An administrator whose email is on the allowlist can approve or reject applications under **Account approvals and role management**. Approval unlocks sign-in and creates a durable decision shown as an in-app notice at sign-in. Rejection keeps sign-in blocked. The admin API allows ten requests per authenticated administrator per minute on each API instance.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:60845c05e6ac4f28ef05605c2151c3516afe3b78324fcb41f0aeeb0f64077bc7 -->
+
+Customers can sign in after registering. Vendor and rider applications start pending. An administrator whose email is on the allowlist can approve or reject applications in **Admin dashboard → Pending Approvals**. The queue lists applicants oldest first and shows their registration time in Philippine time. The Operations tab contains existing account and role management tools. For a separately hosted web frontend, proxy both `/admin` and `/admin/*` to Axum on the same origin so direct navigation uses the same access guard as the API. Approval unlocks sign-in and creates a durable decision shown as an in-app notice at sign-in. Rejection keeps sign-in blocked. The admin API allows ten requests per authenticated administrator per minute on each API instance.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Stop all old API instances and other writers, verify a backup, and allow downtime for migration 0008 and its transactional encryption backfill before serving traffic. The migration keeps the original receipt signatures and audit tags. MariaDB DDL can commit independently; if the schema migration stops partway through, follow the recovery procedure below. If the subsequent application backfill fails, it rolls back and startup stays offline. Use the same encryption key on retry. Old database backups, binary logs, and storage snapshots can still contain plaintext; retain or expire them under your existing access policy.
 

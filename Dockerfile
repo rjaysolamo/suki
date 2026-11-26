@@ -3,10 +3,9 @@ FROM rust:1.85-slim-bookworm AS builder
 WORKDIR /app 
 COPY . . 
 RUN cargo build --release --locked -p suki-backend
-
 # Stage 2: Minimal runtime image
 FROM debian:bookworm-slim
-RUN apt-get update &amp;&amp; apt-get install -y ca-certificates libssl-dev &amp;&amp; rm -rf /var/lib/apt/lists/\*
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends ca-certificates libssl3 &amp;&amp; rm -rf /var/lib/apt/lists/\*
 WORKDIR /app
 COPY --from=builder /app/target/release/suki-api /app/suki-api
 

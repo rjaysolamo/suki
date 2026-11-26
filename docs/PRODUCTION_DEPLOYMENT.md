@@ -157,9 +157,7 @@ openssl rand -hex 32
 
 Place this file in the directory from which you run `suki-api` (e.g. `/etc/suki/`), with mode `600` and owned by the service user:
 
-<!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:3a898cee7b3dc6267c58181eb1339e97ee4f10f5637aebfdd0b057cdc281df27 -->
 
 ```bash
 sudo mkdir -p /etc/suki
@@ -195,7 +193,6 @@ sudo chmod 600 /etc/suki/.env
 sudo chown suki:suki /etc/suki/.env   # assumes a 'suki' service user
 ```
 
-<!-- /coderabbit-ai-generated:v1 -->
 
 ### 4.3 Create the Service User
 
@@ -207,9 +204,7 @@ sudo chown -R suki:suki /var/lib/suki
 
 ### 4.4 All Environment Variables Reference
 
-<!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:6a392b42f7e206200ce23421e953966f3f20a337e41b0dabe1934ff7b3f2eb9f -->
 
 | Variable | Required | Default | Production value |
 |---|---|---|---|
@@ -228,7 +223,6 @@ sudo chown -R suki:suki /var/lib/suki
 | `BOOTSTRAP_ADMIN_EMAIL` | First run only | — | Set once; **remove after first successful start** |
 | `BOOTSTRAP_ADMIN_PASSWORD` | First run only | — | Min 16 chars; **remove after first successful start** |
 
-<!-- /coderabbit-ai-generated:v1 -->
 
 ---
 

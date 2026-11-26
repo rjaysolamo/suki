@@ -1,12 +1,9 @@
 # System architecture
 
-<!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:d0ea520aa7a212da3dbda0d72c94135675fe8b18a3835792474be6a616b1507e -->
 
 Dioxus components own screen state through signals. The native transport keeps its access cookie in memory and restores the session using a refresh credential protected by Android Keystore or iOS Keychain. The browser uses same-origin HttpOnly cookies. WebSocket handshakes require a valid access token and exact Origin; established sockets recheck the underlying device session and order permission so rotation does not disconnect an active delivery. Navigating away stops the subscription. On reconnect the client recovers persisted messages by cursor and refreshes the order and courier location.
 
-<!-- /coderabbit-ai-generated:v1 -->
 
 Axum handlers own authorization and transactions. SQLx connects to MariaDB 11.8 LTS using its MySQL driver. Existing migration names and contents are unchanged so an existing database can keep its migration history. The separate PostgreSQL foundation prototype was removed from the product tree.
 

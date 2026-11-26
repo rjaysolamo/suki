@@ -65,10 +65,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or_else(|| "target/suki-media".into()),
         events: tokio::sync::broadcast::channel(256).0,
     });
+
     let listener = tokio::net::TcpListener::bind(
-        std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:8080".into()),
+        std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".into()),
     )
     .await?;
+
     tracing::info!(address=%listener.local_addr()?,"Suki API ready");
     let images = std::env::var_os("SUKI_IMAGE_DIR")
         .map(std::path::PathBuf::from)
